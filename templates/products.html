@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Товары{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Каталог товаров</h1>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                Категории
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="{{ url_for('products') }}" class="list-group-item list-group-item-action {% if not request.args.get('category_id') %}active{% endif %}">Все товары</a>
+                {% for category in categories %}
+                <a href="{{ url_for('products', category_id=category.id) }}" class="list-group-item list-group-item-action {% if request.args.get('category_id')|int == category.id %}active{% endif %}">
+                    {{ category.name }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <div class="row">
+            {% for product in products %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <img src="{{ url_for('static', filename='images/' + product.image) }}" class="card-img-top" alt="{{ product.name }}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product.name }}</h5>
+                        <p class="card-text">{{ product.description[:50] }}...</p>
+                        <p class="fw-bold">{{ product.price }} ₽</p>
+                    </div>
+                    <div class="card-footer bg-white">
+                        <a href="{{ url_for('product', product_id=product.id) }}" class="btn btn-sm btn-outline-success">Подробнее</a>
+                        <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-success">В корзину</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">Товары не найдены</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
