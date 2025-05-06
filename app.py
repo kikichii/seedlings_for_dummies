@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
-from models import db, Product, Category, Order, OrderItem
+from models import Userdb, db, Product, Category, Order, OrderItem, Cart
+from forms import RegistrationForm, LoginForm
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 import os
@@ -19,23 +20,77 @@ login_manager.login_view = 'login'
 
 
 class User(UserMixin):
-    def __init__(self, id, username, password, is_admin=False):
-        self.id = id
-        self.username = username
-        self.password = password
-        self.is_admin = is_admin
+    def __init__(self, user_db):
+        self.user_db = user_db
+        self.id = user_db.id
+        self.username = user_db.username
+        self.is_admin = user_db.is_admin
 
 
-# Для простоты используем фиксированного пользователя
-users = {
-    1: User(1, 'admin', generate_password_hash('admin'), True),
-    2: User(2, 'user', generate_password_hash('user'))
-}
-
-
+# admin = Userdb(id=1, username='admin', email='admin@admin.admin', password_hash=generate_password_hash('admin'),
+        # is_admin=True)
+# db.session.add(admin)
+# firstuser = Userdb(id=2, username='fuser', email='user@user.first', password_hash=generate_password_hash('user'),
+        # is_admin=False)
+# db.session.add(firstuser)
+# db.session.commit()
 @login_manager.user_loader
 def load_user(user_id):
-    return users.get(int(user_id))
+    user_db = Userdb.query.get(int(user_id))
+    if user_db:
+        return User(user_db)
+    return None
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = Userdb(username=form.username.data, email=form.email.data)
+        user.set_password(form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        flash('Регистрация прошла успешно! Теперь вы можете войти.', 'success')
+        return redirect(url_for('login'))
+    return render_template('register.html', form=form)
+
+
+# Авторизация
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+
+    form = LoginForm()
+    if form.validate_on_submit():
+        user_db = Userdb.query.filter_by(username=form.username.data).first()
+        if user_db and user_db.check_password(form.password.data):
+            user = User(user_db)
+            login_user(user, remember=form.remember.data)
+            next_page = request.args.get('next')
+            flash('Вы успешно вошли в систему', 'success')
+
+            # Переносим корзину из сессии в аккаунт пользователя
+            if 'cart' in session:
+                # Здесь можно добавить логику объединения корзин
+                pass
+
+            return redirect(next_page or url_for('index'))
+        else:
+            flash('Неверное имя пользователя или пароль', 'danger')
+    return render_template('login.html', form=form)
+
+
+# Выход
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('Вы вышли из системы', 'info')
+    return redirect(url_for('index'))
 
 
 # Создание БД
@@ -140,30 +195,35 @@ def add_to_cart(product_id):
 # Оформление заказа
 @app.route('/checkout', methods=['GET', 'POST'])
 def checkout():
+    cart = session.get('cart', {})
+    if not cart:
+        flash('Ваша корзина пуста', 'warning')
+        return redirect(url_for('cart'))
+
     if request.method == 'POST':
-        if not current_user.is_authenticated:
-            flash('Для оформления заказа необходимо войти в систему', 'warning')
-            return redirect(url_for('login'))
+        # Для авторизованных пользователей
+        if current_user.is_authenticated:
+            order = Order(
+                user_id=current_user.id,
+                name=current_user.username,
+                phone=request.form['phone'],
+                address=request.form['address'],
+                status='new'
+            )
+        # Для гостей
+        else:
+            order = Order(
+                name=request.form['name'],
+                phone=request.form['phone'],
+                address=request.form['address'],
+                status='new'
+            )
 
-        cart = session.get('cart', {})
-        if not cart:
-            flash('Ваша корзина пуста', 'warning')
-            return redirect(url_for('cart'))
-
-        # Создаем заказ
-        order = Order(
-            user_id=current_user.id,
-            name=request.form['name'],
-            phone=request.form['phone'],
-            address=request.form['address'],
-            status='new'
-        )
         db.session.add(order)
         db.session.commit()
 
-        # Добавляем товары в заказ
         for product_id, quantity in cart.items():
-            product = Product.query.get(product_id)
+            product = Product.query.get(int(product_id))
             if product:
                 order_item = OrderItem(
                     order_id=order.id,
@@ -178,31 +238,12 @@ def checkout():
         flash('Ваш заказ успешно оформлен!', 'success')
         return redirect(url_for('index'))
 
+    # Автозаполнение данных для авторизованных пользователей
+    if current_user.is_authenticated:
+        return render_template('order.html',
+                               name=current_user.username,
+                               email=current_user.email)
     return render_template('order.html')
-
-
-# Авторизация
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        user = next((u for u in users.values() if u.username == username), None)
-        if user and check_password_hash(user.password, password):
-            login_user(user)
-            flash('Вы успешно вошли в систему', 'success')
-            return redirect(url_for('index'))
-        flash('Неверное имя пользователя или пароль', 'danger')
-    return render_template('login.html')
-
-
-# Выход
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    flash('Вы вышли из системы', 'info')
-    return redirect(url_for('index'))
 
 
 # Админка - список товаров
