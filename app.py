@@ -101,7 +101,7 @@ with app.app_context():
         categories = [
             Category(name='Овощные культуры'),
             Category(name='Цветы'),
-            Category(name='Плодовые кустарники')
+            Category(name='Ягоды')
         ]
         db.session.add_all(categories)
         db.session.commit()
@@ -112,7 +112,17 @@ with app.app_context():
             Product(name='Петуния ампельная', description='Яркие цветы для кашпо', price=200, category_id=2,
                     image='petunia.jpg'),
             Product(name='Смородина черная', description='Сладкие ягоды', price=300, category_id=3,
-                    image='smorodina.jpg')
+                    image='smorodina.jpg'),
+            Product(name='Клубника', description='Сладкие ягоды', price=500, category_id=3,
+                    image='club.jpg'),
+            Product(name='Земляника', description='Сладкие ягоды', price=400, category_id=3,
+                    image='zemla.jpg'),
+            Product(name='Голубика', description='Сладкие ягоды', price=450, category_id=3,
+                    image='golub.jpg'),
+            Product(name='Черника', description='Сладкие ягоды', price=350, category_id=3,
+                    image='chernika.jpg'),
+            Product(name='Арбуз', description='Сладкие ягоды', price=2000, category_id=3,
+                    image='arbuz.jpg')
         ]
         db.session.add_all(products)
         db.session.commit()
@@ -249,8 +259,8 @@ def checkout():
     # Автозаполнение данных для авторизованных пользователей
     if current_user.is_authenticated:
         return render_template('order.html',
-                               name=current_user.username,
-                               email=current_user.email)
+                               name=current_user.username)
+                               #email=current_user.email
     return render_template('order.html')
 
 
