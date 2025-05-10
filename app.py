@@ -152,9 +152,7 @@ def cart():
     products_in_cart = []
     total = 0
 
-    normalized_cart = {str(k): v for k, v in cart.items()}
-
-    for product_id_str, quantity in normalized_cart.items():
+    for product_id_str, quantity in cart.items():
         try:
             product = Product.query.get(int(product_id_str))
             if product:
@@ -166,8 +164,6 @@ def cart():
                 total += product.price * quantity
         except (ValueError, TypeError):
             continue
-
-    session['cart'] = normalized_cart
 
     return render_template('cart.html', products=products_in_cart, total=total)
 
@@ -190,6 +186,18 @@ def add_to_cart(product_id):
     session['cart'] = cart
     flash('Товар добавлен в корзину', 'success')
     return redirect(request.referrer)
+
+
+# Удаление из корзины
+@app.route('/remove_from_cart/<int:product_id>', methods=['POST'])
+def remove_from_cart(product_id):
+    cart = session.get('cart', {})
+    product_id_str = str(product_id)
+    if product_id_str in cart:
+        del cart[product_id_str]
+        session['cart'] = cart
+        flash('Товар удален из корзины', 'success')
+    return redirect(url_for('cart'))
 
 
 # Оформление заказа

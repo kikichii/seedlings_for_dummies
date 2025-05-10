@@ -5,7 +5,7 @@
 {% block content %}
 <h1 class="mb-4">Ваша корзина</h1>
 
-{% if not products_in_cart %}
+{% if not products %}
 <div class="alert alert-info">
     Ваша корзина пуста. <a href="{{ url_for('products') }}" class="alert-link">Перейти к покупкам</a>
 </div>
@@ -22,14 +22,14 @@
             </tr>
         </thead>
         <tbody>
-            {% for item in products_in_cart %}
+            {% for item in products %}
             <tr>
                 <td>{{ item.product.name }}</td>
                 <td>{{ item.product.price }} ₽</td>
                 <td>{{ item.quantity }}</td>
                 <td>{{ item.sum }} ₽</td>
                 <td>
-                    <form action="{{ url_for('remove_from_cart', product_id=item.product.id) }}" method="POST" class="d-inline">
+                    <form action="{{ url_for('remove_from_cart', product_id=item.product.id) }}" method="POST">
                         <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
                     </form>
                 </td>
