@@ -122,7 +122,11 @@ with app.app_context():
             Product(name='Черника', description='Сладкие ягоды', price=350, category_id=3,
                     image='chernika.jpg'),
             Product(name='Арбуз', description='Сладкие ягоды', price=2000, category_id=3,
-                    image='arbuz.jpg')
+                    image='arbuz.jpg'),
+            Product(name='Картошка Семёна Лобанова',
+                    description='Ля ля ля, я Семён Лобанов и у меня башка из картошки.Поэтому я позавидовал козлу Филу и обидел свою красивую жену.',
+                    price=999, category_id=1,
+                    image='potato.jpg')
         ]
         db.session.add_all(products)
         db.session.commit()
